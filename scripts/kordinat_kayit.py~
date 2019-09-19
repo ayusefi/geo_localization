@@ -1,0 +1,43 @@
+#!/usr/bin/env python
+import rospy
+from std_msgs.msg import String
+import numpy as np
+import pandas as pd
+import csv
+
+ 
+
+
+
+location_koordinat=[]
+location_name=[]
+
+def callback(data):
+    global location,location_name,location_koordinat
+    location = np.array([['','lineer_x','lineer_y','lineer_z']])
+    location_split=data.data[1:].split("*")
+    location_name=[]
+    location_koordinat=[]
+     
+    for i in range(len(location_split)):
+        if i%2==0:
+            location_name.append(location_split[i])
+        else:
+            location_koordinat.append((location_split[i])[1:len(location_split[i])-1].split(","))
+           
+    if len(location_koordinat)>0 and len(location_name)>0:
+	    for i in range(len(location_name)):  
+		location=np.append(location,[[location_name[i],location_koordinat[i][0],location_koordinat[i][1],location_koordinat[i][2]]],axis = 0)
+    my_data=pd.DataFrame(data=location[1:,1:],
+                  index=location[1:,0],
+                  columns=location[0,1:])
+    my_data.to_csv('~/turtlebot_work_space/src/turtlebot_detection/scripts/example.csv')
+    
+def listener():
+    global my_data,location
+    rospy.init_node('location_write', anonymous=True) 
+    rospy.Subscriber('location_save', String, callback)
+    rospy.spin()
+
+if __name__ == '__main__':
+    listener()

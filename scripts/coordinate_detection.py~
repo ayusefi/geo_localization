@@ -1,0 +1,143 @@
+#!/usr/bin/env python
+import rospy
+from nav_msgs.msg import Odometry
+from geometry_msgs.msg import TwistStamped
+from geometry_msgs.msg import PoseArray,Pose
+import math
+import tf
+from std_msgs.msg import String
+
+robot_yaw=0
+robot_x=0
+robot_y=0
+robot_z=0
+
+knect_x=0
+knect_y=0
+knect_z=0
+
+knect_roll=0
+knect_pitch=0
+knect_yaw=0
+header=""
+	
+
+angular_speedz=0.0
+linear_speedx=0.0
+linear_speedy=0.0
+linear_speedz=0.0
+
+
+
+def callback_odom(msg):
+    global robot_yaw,robot_x,robot_y,robot_z,linear_speedx,linear_speedy,linear_speedz
+    global angular_speedx,angular_speedy,angular_speedz
+    robot_yaw= tf.transformations.euler_from_quaternion([msg.pose.pose.orientation.x, msg.pose.pose.orientation.y, msg.pose.pose.orientation.z, msg.pose.pose.orientation.w])[2]
+    robot_x=msg.pose.pose.position.x    
+    robot_y=msg.pose.pose.position.y
+    robot_z=msg.pose.pose.position.z
+
+    linear_speedx=msg.twist.twist.linear.x
+    linear_speedy=msg.twist.twist.linear.y
+    linear_speedz=msg.twist.twist.linear.z
+    
+    angular_speedx=msg.twist.twist.angular.x
+    angular_speedy=msg.twist.twist.angular.y
+    angular_speedz=msg.twist.twist.angular.z
+
+
+
+x=0
+y=0
+
+def callback(data):
+    global knect_x,knect_y,knect_z,knect_roll,knect_pitch,knect_yaw,header,x,y
+    header=data.header.frame_id
+    knect_x=-1*data.twist.linear.x
+    knect_y=data.twist.linear.z
+    knect_z=data.twist.linear.y
+    knect_roll=data.twist.angular.x
+    knect_pitch=data.twist.angular.y
+    knect_yaw=data.twist.angular.z
+
+
+
+    knect_x2=knect_y*math.sin(robot_yaw)+knect_x*math.cos(robot_yaw)
+    knect_y2=knect_y*math.cos(robot_yaw)-knect_x*math.sin(robot_yaw)
+    msg=TwistStamped()
+    msg.header.frame_id=str(header)
+        
+    y=(knect_x2+robot_y)
+    x=knect_y2+robot_x
+
+    msg.twist.linear.x=(knect_x2+robot_y)
+    msg.twist.linear.y=(knect_y2+robot_x)
+
+
+
+
+        
+
+    
+object_coordinat=[]
+object_name=[]
+
+def listener():
+    global object_coordinat,knect_y,knect_x,robot_x,robot_y,linear_speedx,linear_speedy,linear_speedz,object_name
+    rospy.init_node('coordinate_detection', anonymous=True)  
+    rospy.Subscriber('/object_geometry',TwistStamped, callback)
+    publisher = rospy.Publisher("/middle_object_geometry", PoseArray,queue_size=1)
+    kayit = rospy.Publisher("/location_save",String,queue_size=3)
+    rospy.Subscriber('/odom',Odometry, callback_odom)
+    rate = rospy.Rate(100)        
+    while not rospy.is_shutdown():
+        
+
+       
+            
+        check=True
+        
+        for i in range(1,len(object_coordinat)):
+            deneme=math.sqrt((object_coordinat[i][0]-x)**2+(object_coordinat[i][1]-y)**2) 
+            if abs(deneme)<0.5:
+                check=False
+            
+                 
+            
+            
+        
+        object_distance=math.sqrt(knect_x**2+knect_y**2+knect_z**2)
+        if check and abs(angular_speedz)<0.001 and abs(linear_speedx)<0.001 and abs(linear_speedy)<0.001 and abs(linear_speedz)<0.001 and object_distance<4 and object_distance>0.3:
+            object_coordinat.append([x,y,0.0])
+            object_name.append(str(header)+"T")
+        
+        
+        #print object_coordinat
+        koordinat=""
+        for i in range(len(object_coordinat)):
+            koordinat+="*"+object_name[i]
+            koordinat+="*"+str(object_coordinat[i])
+
+        pa=PoseArray()
+        
+	print object_coordinat
+	print len(object_coordinat)
+        for i in range(1,len(object_coordinat)):
+            point=Pose()
+            point.position.x=object_coordinat[i][0]
+            point.position.y=object_coordinat[i][1]
+            point.position.z=object_coordinat[i][2]
+            pa.poses.append(point)
+	    print pa
+        publisher.publish(pa)
+        
+                        
+
+
+        kayit.publish(koordinat)
+        
+        rate.sleep()
+
+
+if __name__ == '__main__':
+    listener()

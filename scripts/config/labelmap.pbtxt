@@ -1,0 +1,30 @@
+item {
+  id: 1
+  name: 'park'
+}
+
+item {
+  id: 2
+  name: 'girilmez'
+}
+
+item {
+  id: 3
+  name: 'ileri_sag'
+}
+
+item {
+  id: 4
+  name: 'yaya'
+}
+
+item {
+  id: 5
+  name: 'soldan'
+}
+
+item {
+  id: 6
+  name: 'gevsek'
+}
+

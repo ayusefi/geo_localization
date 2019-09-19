@@ -1,0 +1,70 @@
+#!/usr/bin/env python
+# license removed for brevity
+import rospy
+import pandas as pd
+from geometry_msgs.msg import PoseStamped,PoseArray,Pose
+
+
+
+def talker():
+    pub = rospy.Publisher('/move_base/goal', PoseStamped, queue_size=10)
+    publisher = rospy.Publisher('/middle_object_geometry', PoseArray, queue_size=10)
+    rospy.init_node('Hedef_belirleme_node', anonymous=True)
+    rate = rospy.Rate(10) # 10hz
+    while not rospy.is_shutdown():
+      
+        lines=[]
+        for line in pd.read_csv('/home/mkturtlebot/turtlebot_work_space/src/turtlebot_detection/scripts/example.csv', encoding='utf-8', header=None, chunksize=1):
+            lines.append(line.iloc[0])
+
+        
+        aranan=str(raw_input("Hedef renk "))
+        koordinat=[]
+        for i in range(len(lines)):
+            if lines[i][0]==aranan:
+                print lines[i]
+                koordinat.append(lines[i][1])
+                koordinat.append(lines[i][2])
+                koordinat.append(lines[i][3])
+                break
+
+
+        if len(koordinat)>0:
+            msg=PoseStamped()
+            msg.header.frame_id="map"
+            msg.header.stamp=rospy.Time.now()
+            msg.pose.position.x = float(koordinat[0])
+
+            msg.pose.position.y = float(koordinat[1])
+	    msg.pose.position.z = float(koordinat[2])
+            msg.pose.orientation.w = 1.0
+	    rospy.loginfo(msg)
+            pub.publish(msg)
+
+	pa=PoseArray()
+	for i in range(1,len(lines)):   
+		point=Pose()
+            
+	   
+		point.position.x=float(lines[i][1])
+		point.position.y=float(lines[i][2])
+		point.position.z=float(lines[i][3])
+		pa.poses.append(point)
+	
+
+	publisher.publish(pa)
+            
+        rate.sleep()
+
+
+
+
+
+if __name__ == '__main__':
+    try:
+        talker()
+    except rospy.ROSInterruptException:
+        pass
+
+
+
